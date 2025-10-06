@@ -1,0 +1,67 @@
+name: Terraform Dev Deployment to Azure
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Choose environment"
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
+      action:
+        description: "Choose plan/apply"
+        required: false
+        default: plan
+        type: choice
+        options:
+          - plan
+          - apply
+
+  push:
+    paths:
+      - '**/*.tf'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.7.5
+
+      - name: Set Azure Credentials as Env Vars
+        run: |
+          echo "ARM_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}" >> $GITHUB_ENV
+          echo "ARM_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }}" >> $GITHUB_ENV
+          echo "ARM_SUBSCRIPTION_ID=${{ secrets.AZURE_SUBSCRIPTION_ID }}" >> $GITHUB_ENV
+          echo "ARM_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}" >> $GITHUB_ENV
+          echo "ARM_RESOURCEGROUP_ID= ${{ secrets.AZURE_RESOURCEGROUP_ID }}" >> $GITHUB_ENV
+
+      - name: Terraform Init
+        run: terraform init
+        
+      - name: Debug env
+        run: env | grep ARM_
+      
+      - name: Terraform Import Resource
+        run: terraform import azurerm_resource_group.example "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ secrets.AZURE_RESOURCEGROUP_ID }}"
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan -var-file="${{ inputs.environment }}.tfvars"
+
+      - name: Terraform Apply        
+        if: ${{ inputs.action == 'apply' }}           
+        run: terraform apply -auto-approve -var-file="${{ inputs.environment }}.tfvars"
+
