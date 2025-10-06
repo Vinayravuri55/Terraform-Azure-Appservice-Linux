@@ -16,14 +16,18 @@ resource "azurerm_linux_web_app" "example" {
   resource_group_name = azurerm_resource_group.example.name
   service_plan_id = azurerm_service_plan.example.id
   site_config {
-    linux_fx_version = "DOTNETCORE|8.0"
+    application_stack {
+      dotnet_version = "8.0"
+    }
   }
 }
 
 resource "azurerm_linux_web_app_slot" "example" {
   name                = "${var.company}${var.environment}asstaging"
-  app_service_id    = azurerm_app_service.example.id
+  app_service_id    = azurerm_linux_web_app.example.id
   site_config {
-    linux_fx_version = "DOTNETCORE|8.0"
+    application_stack {
+      dotnet_version = "8.0"
+    }
   }
 }
